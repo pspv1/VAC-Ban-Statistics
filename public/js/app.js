@@ -1,34 +1,61 @@
 document.addEventListener('DOMContentLoaded', () => {
+    let banChart, gameChart;
+    
+    // Function to fetch and update ban wave data
+    async function fetchBanWaveData() {
+        try {
+            const response = await fetch('/api/banwave');
+            const data = await response.json();
+            
+            // Process the data for the charts
+            const dailyBans = {};
+            data.forEach(ban => {
+                const banDate = new Date();
+                banDate.setDate(banDate.getDate() - ban.DaysSinceLastBan);
+                const dateKey = banDate.toISOString().split('T')[0];
+                dailyBans[dateKey] = (dailyBans[dateKey] || 0) + 1;
+            });
+
+            // Sort dates and get the last 30 days
+            const sortedDates = Object.keys(dailyBans).sort();
+            const last30Days = sortedDates.slice(-30);
+            const banCounts = last30Days.map(date => dailyBans[date] || 0);
+
+            // Update the ban chart
+            if (banChart) {
+                banChart.data.labels = last30Days;
+                banChart.data.datasets[0].data = banCounts;
+                banChart.update();
+            }
+
+            // Update statistics
+            const totalBans = data.length;
+            const last30DaysBans = banCounts.reduce((a, b) => a + b, 0);
+            const avgDaysSinceLastBan = Math.round(
+                data.reduce((acc, ban) => acc + ban.DaysSinceLastBan, 0) / totalBans
+            );
+
+            // Update the statistics cards
+            document.querySelector('.stat-card:nth-child(1) .value').textContent = totalBans.toLocaleString();
+            document.querySelector('.stat-card:nth-child(2) .value').textContent = last30DaysBans.toLocaleString();
+            document.querySelector('.stat-card:nth-child(3) .value').textContent = avgDaysSinceLastBan;
+        } catch (error) {
+            console.error('Error fetching ban wave data:', error);
+        }
+    }
+
     // Initialize the ban statistics chart
     const banCtx = document.getElementById('banChart').getContext('2d');
-    const banChart = new Chart(banCtx, {
+    banChart = new Chart(banCtx, {
         type: 'line',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            labels: [],
             datasets: [
                 {
-                    label: 'New Bans',
-                    data: [1200, 1900, 1500, 2200, 1800, 2400, 2100, 1742, 2000, 1850, 2300, 2500],
+                    label: 'Daily Bans',
+                    data: [],
                     borderColor: '#ff4655',
                     backgroundColor: 'rgba(255, 70, 85, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.3
-                },
-                {
-                    label: 'Appeals Granted',
-                    data: [80, 120, 90, 150, 100, 130, 110, 95, 120, 140, 100, 90],
-                    borderColor: '#4caf50',
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.3
-                },
-                {
-                    label: 'Repeat Offenders',
-                    data: [320, 450, 380, 510, 420, 580, 490, 520, 480, 510, 550, 600],
-                    borderColor: '#ff9800',
-                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
                     borderWidth: 3,
                     fill: true,
                     tension: 0.3
@@ -71,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize the top games chart
     const gameCtx = document.getElementById('gameChart').getContext('2d');
-    const gameChart = new Chart(gameCtx, {
+    gameChart = new Chart(gameCtx, {
         type: 'doughnut',
         data: {
             labels: ['Counter-Strike 2', 'Dota 2', 'Rust', 'Team Fortress 2', 'Apex Legends', 'Others'],
@@ -131,4 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
             this.style.transform = 'translateY(0)';
         });
     });
+
+    // Fetch initial ban wave data
+    fetchBanWaveData();
+
+    // Update ban wave data every 5 minutes
+    setInterval(fetchBanWaveData, 5 * 60 * 1000);
 });

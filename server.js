@@ -39,6 +39,57 @@ function convertToSteam64(steamId) {
     return null;
 }
 
+// Get ban wave data (last 100 bans)
+app.get('/api/banwave', async (req, res) => {
+    try {
+        // In a real application, you would maintain a database of Steam IDs
+        // For demo purposes, we'll use a small set of random Steam IDs
+        const sampleSteamIds = Array.from({ length: 100 }, () => 
+            (76561197960265728n + BigInt(Math.floor(Math.random() * 1000000000))).toString()
+        );
+
+        const response = await fetch(
+            `${STEAM_API_BASE}/ISteamUser/GetPlayerBans/v1/?key=${process.env.STEAM_API_KEY}&steamids=${sampleSteamIds.join(',')}`
+        );
+        
+        const data = await response.json();
+        
+        if (!data.players) {
+            return res.status(404).json({ error: 'No ban data available' });
+        }
+
+        // Filter and sort banned players
+        const bannedPlayers = data.players
+            .filter(player => player.VACBanned || player.NumberOfGameBans > 0)
+            .sort((a, b) => b.DaysSinceLastBan - a.DaysSinceLastBan);
+
+        // Get player details for banned players
+        const playerDetailsResponse = await fetch(
+            `${STEAM_API_BASE}/ISteamUser/GetPlayerSummaries/v2/?key=${process.env.STEAM_API_KEY}&steamids=${
+                bannedPlayers.map(player => player.SteamId).join(',')
+            }`
+        );
+        
+        const playerDetails = await playerDetailsResponse.json();
+        
+        // Combine ban data with player details
+        const enrichedBanData = bannedPlayers.map(banData => {
+            const playerInfo = playerDetails.response.players.find(
+                player => player.steamid === banData.SteamId
+            );
+            return {
+                ...banData,
+                playerDetails: playerInfo || null
+            };
+        });
+
+        res.json(enrichedBanData);
+    } catch (error) {
+        console.error('Error fetching ban wave data:', error);
+        res.status(500).json({ error: 'Failed to fetch ban wave data' });
+    }
+});
+
 // Get player ban information
 app.get('/api/bans/:steamId', async (req, res) => {
     try {
