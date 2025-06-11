@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/banwave');
             const data = await response.json();
             
+            // Check if the response contains an error or if data is not an array
+            if (data.error || !Array.isArray(data)) {
+                console.error('Error from server:', data.error || 'Invalid data format');
+                return;
+            }
+            
             // Process the data for the charts
             const dailyBans = {};
             data.forEach(ban => {

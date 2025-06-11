@@ -42,6 +42,12 @@ function convertToSteam64(steamId) {
 // Get ban wave data (last 100 bans)
 app.get('/api/banwave', async (req, res) => {
     try {
+        // Check if Steam API key is configured
+        if (!process.env.STEAM_API_KEY) {
+            console.error('STEAM_API_KEY is not configured in .env file');
+            return res.status(500).json({ error: 'Steam API key not configured' });
+        }
+
         // In a real application, you would maintain a database of Steam IDs
         // For demo purposes, we'll use a small set of random Steam IDs
         const sampleSteamIds = Array.from({ length: 100 }, () => 
@@ -52,6 +58,13 @@ app.get('/api/banwave', async (req, res) => {
             `${STEAM_API_BASE}/ISteamUser/GetPlayerBans/v1/?key=${process.env.STEAM_API_KEY}&steamids=${sampleSteamIds.join(',')}`
         );
         
+        // Check if the response is ok before trying to parse JSON
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Steam API error:', response.status, errorText);
+            return res.status(500).json({ error: 'Steam API request failed' });
+        }
+
         const data = await response.json();
         
         if (!data.players) {
@@ -70,6 +83,14 @@ app.get('/api/banwave', async (req, res) => {
             }`
         );
         
+        // Check if the player details response is ok
+        if (!playerDetailsResponse.ok) {
+            const errorText = await playerDetailsResponse.text();
+            console.error('Steam API player details error:', playerDetailsResponse.status, errorText);
+            // Return just the ban data without player details
+            return res.json(bannedPlayers);
+        }
+
         const playerDetails = await playerDetailsResponse.json();
         
         // Combine ban data with player details
@@ -93,6 +114,10 @@ app.get('/api/banwave', async (req, res) => {
 // Get player ban information
 app.get('/api/bans/:steamId', async (req, res) => {
     try {
+        if (!process.env.STEAM_API_KEY) {
+            return res.status(500).json({ error: 'Steam API key not configured' });
+        }
+
         const steam64Id = convertToSteam64(req.params.steamId);
         if (!steam64Id) {
             return res.status(400).json({ error: 'Invalid Steam ID format' });
@@ -101,6 +126,13 @@ app.get('/api/bans/:steamId', async (req, res) => {
         const response = await fetch(
             `${STEAM_API_BASE}/ISteamUser/GetPlayerBans/v1/?key=${process.env.STEAM_API_KEY}&steamids=${steam64Id}`
         );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Steam API error:', response.status, errorText);
+            return res.status(500).json({ error: 'Steam API request failed' });
+        }
+
         const data = await response.json();
 
         if (!data.players || !data.players.length) {
@@ -117,6 +149,10 @@ app.get('/api/bans/:steamId', async (req, res) => {
 // Get player summary (name, avatar, etc.)
 app.get('/api/player/:steamId', async (req, res) => {
     try {
+        if (!process.env.STEAM_API_KEY) {
+            return res.status(500).json({ error: 'Steam API key not configured' });
+        }
+
         const steam64Id = convertToSteam64(req.params.steamId);
         if (!steam64Id) {
             return res.status(400).json({ error: 'Invalid Steam ID format' });
@@ -125,6 +161,13 @@ app.get('/api/player/:steamId', async (req, res) => {
         const response = await fetch(
             `${STEAM_API_BASE}/ISteamUser/GetPlayerSummaries/v2/?key=${process.env.STEAM_API_KEY}&steamids=${steam64Id}`
         );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Steam API error:', response.status, errorText);
+            return res.status(500).json({ error: 'Steam API request failed' });
+        }
+
         const data = await response.json();
 
         if (!data.response.players || !data.response.players.length) {
@@ -141,6 +184,10 @@ app.get('/api/player/:steamId', async (req, res) => {
 // Get player's owned games
 app.get('/api/games/:steamId', async (req, res) => {
     try {
+        if (!process.env.STEAM_API_KEY) {
+            return res.status(500).json({ error: 'Steam API key not configured' });
+        }
+
         const steam64Id = convertToSteam64(req.params.steamId);
         if (!steam64Id) {
             return res.status(400).json({ error: 'Invalid Steam ID format' });
@@ -149,6 +196,13 @@ app.get('/api/games/:steamId', async (req, res) => {
         const response = await fetch(
             `${STEAM_API_BASE}/IPlayerService/GetOwnedGames/v1/?key=${process.env.STEAM_API_KEY}&steamid=${steam64Id}&include_appinfo=true&include_played_free_games=true`
         );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Steam API error:', response.status, errorText);
+            return res.status(500).json({ error: 'Steam API request failed' });
+        }
+
         const data = await response.json();
 
         if (!data.response || !data.response.games) {
