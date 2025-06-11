@@ -39,6 +39,27 @@ function convertToSteam64(steamId) {
     return null;
 }
 
+// Helper function to safely parse JSON response
+async function safeJsonParse(response) {
+    const contentType = response.headers.get('content-type');
+    
+    if (!contentType || !contentType.includes('application/json')) {
+        const responseText = await response.text();
+        console.error('Expected JSON but received:', contentType);
+        console.error('Response body:', responseText.substring(0, 200) + '...');
+        throw new Error('Steam API returned non-JSON response. This usually indicates an invalid API key or API error.');
+    }
+    
+    try {
+        return await response.json();
+    } catch (jsonError) {
+        const responseText = await response.text();
+        console.error('Failed to parse JSON:', jsonError);
+        console.error('Response body:', responseText.substring(0, 200) + '...');
+        throw new Error('Steam API returned invalid JSON response');
+    }
+}
+
 // Get ban wave data (last 100 bans)
 app.get('/api/banwave', async (req, res) => {
     try {
@@ -67,12 +88,10 @@ app.get('/api/banwave', async (req, res) => {
 
         let data;
         try {
-            data = await response.json();
-        } catch (jsonError) {
-            const responseText = await response.text();
-            console.error('Failed to parse Steam API response as JSON:', jsonError);
-            console.error('Response body:', responseText);
-            return res.status(500).json({ error: 'Steam API returned invalid JSON response' });
+            data = await safeJsonParse(response);
+        } catch (parseError) {
+            console.error('Error parsing Steam API response:', parseError.message);
+            return res.status(500).json({ error: parseError.message });
         }
         
         if (!data.players) {
@@ -101,11 +120,9 @@ app.get('/api/banwave', async (req, res) => {
 
         let playerDetails;
         try {
-            playerDetails = await playerDetailsResponse.json();
-        } catch (jsonError) {
-            const responseText = await playerDetailsResponse.text();
-            console.error('Failed to parse Steam API player details response as JSON:', jsonError);
-            console.error('Response body:', responseText);
+            playerDetails = await safeJsonParse(playerDetailsResponse);
+        } catch (parseError) {
+            console.error('Error parsing Steam API player details response:', parseError.message);
             // Return just the ban data without player details
             return res.json(bannedPlayers);
         }
@@ -152,12 +169,10 @@ app.get('/api/bans/:steamId', async (req, res) => {
 
         let data;
         try {
-            data = await response.json();
-        } catch (jsonError) {
-            const responseText = await response.text();
-            console.error('Failed to parse Steam API response as JSON:', jsonError);
-            console.error('Response body:', responseText);
-            return res.status(500).json({ error: 'Steam API returned invalid JSON response' });
+            data = await safeJsonParse(response);
+        } catch (parseError) {
+            console.error('Error parsing Steam API response:', parseError.message);
+            return res.status(500).json({ error: parseError.message });
         }
 
         if (!data.players || !data.players.length) {
@@ -195,12 +210,10 @@ app.get('/api/player/:steamId', async (req, res) => {
 
         let data;
         try {
-            data = await response.json();
-        } catch (jsonError) {
-            const responseText = await response.text();
-            console.error('Failed to parse Steam API response as JSON:', jsonError);
-            console.error('Response body:', responseText);
-            return res.status(500).json({ error: 'Steam API returned invalid JSON response' });
+            data = await safeJsonParse(response);
+        } catch (parseError) {
+            console.error('Error parsing Steam API response:', parseError.message);
+            return res.status(500).json({ error: parseError.message });
         }
 
         if (!data.response.players || !data.response.players.length) {
@@ -238,12 +251,10 @@ app.get('/api/games/:steamId', async (req, res) => {
 
         let data;
         try {
-            data = await response.json();
-        } catch (jsonError) {
-            const responseText = await response.text();
-            console.error('Failed to parse Steam API response as JSON:', jsonError);
-            console.error('Response body:', responseText);
-            return res.status(500).json({ error: 'Steam API returned invalid JSON response' });
+            data = await safeJsonParse(response);
+        } catch (parseError) {
+            console.error('Error parsing Steam API response:', parseError.message);
+            return res.status(500).json({ error: parseError.message });
         }
 
         if (!data.response || !data.response.games) {
