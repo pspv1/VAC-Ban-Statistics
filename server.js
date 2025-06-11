@@ -60,7 +60,7 @@ async function safeJsonParse(response) {
     }
 }
 
-// Get ban wave data (last 100 bans)
+// Get ban wave data (reduced to 20 to avoid rate limiting)
 app.get('/api/banwave', async (req, res) => {
     try {
         // Check if Steam API key is configured
@@ -69,9 +69,8 @@ app.get('/api/banwave', async (req, res) => {
             return res.status(500).json({ error: 'Steam API key not configured' });
         }
 
-        // In a real application, you would maintain a database of Steam IDs
-        // For demo purposes, we'll use a small set of random Steam IDs
-        const sampleSteamIds = Array.from({ length: 100 }, () => 
+        // Reduced from 100 to 20 to avoid Steam API rate limiting
+        const sampleSteamIds = Array.from({ length: 20 }, () => 
             (76561197960265728n + BigInt(Math.floor(Math.random() * 1000000000))).toString()
         );
 
